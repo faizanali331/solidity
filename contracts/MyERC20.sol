@@ -1,80 +1,125 @@
-//SPDX-License-Identifier: MIT
- 
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.16;
 
-contract Ownable{
+contract Ownable {
     address internal owner;
-    constructor(){
+
+    constructor() {
         owner = msg.sender;
     }
-    modifier onlyOwner(){
-        require(owner==msg.sender, "Your are not owner Allah hafiz");
+
+    modifier onlyOwner() {
+        require(owner == msg.sender, "You are not owner, Allah hafiz");
         _;
     }
 }
 
-contract MyERC20 is Ownable{
+contract MyERC20 is Ownable {
+
+    string public name = "MyToken";
+    string public symbol = "MTK";
+    uint8 public decimals = 18;
 
     uint256 public totalSupply;
-    mapping(address=>uint256) balances;
-    mapping(address=>mapping(address=> uint256) ) allowances;
-    event Transfer(address indexed _from, address indexed _to, uint256 _value);
-    event Approval(address indexed _owner, address indexed _spender, uint256 _value);
 
-    constructor(uint _initialSupply){
-        //owner = msg.sender;
-        _mint(owner, _initialSupply);
+    mapping(address => uint256) private balances;
+    mapping(address => mapping(address => uint256)) private allowances;
+
+    event Transfer(address indexed from, address indexed to, uint256 value);
+    event Approval(address indexed owner, address indexed spender, uint256 value);
+
+    constructor(uint256 _initialSupply) {
+        // scale supply using decimals
+        _mint(owner, _initialSupply * (10 ** decimals));
     }
-    function _mint(address _to, uint256 _amount) internal onlyOwner{
-        require(_to!=address(0), "Address invalid cannot mint");
-        totalSupply += _amount;
-        balances[_to] += _amount;
-        emit Transfer(address(0), _to, _amount);
+
+    function balanceOf(address account) public view returns (uint256) {
+        return balances[account];
     }
-    function balanceOf(address _address) view public returns(uint256){
-        return balances[_address];
+
+    function allowance(address _owner, address _spender) public view returns (uint256) {
+        return allowances[_owner][_spender];
     }
-    function allowance(address _from, address _to) view public returns(uint256){
-        return allowances[_from][_to];
-    }
-    function approve(address _spender, uint256 _amount) public returns(bool){
-        address _owner = msg.sender;
-        _approve(_owner, _spender, _amount);
-        emit Approval(_owner, _spender, _amount);
+
+    function approve(address spender, uint256 amount) public returns (bool) {
+        _approve(msg.sender, spender, amount);
         return true;
-        
     }
+
+    function increaseAllowance(address spender, uint256 addedValue) public returns (bool) {
+        _approve(
+            msg.sender,
+            spender,
+            allowances[msg.sender][spender] + addedValue
+        );
+        return true;
+    }
+
+    function decreaseAllowance(address spender, uint256 subtractedValue) public returns (bool) {
+        uint256 currentAllowance = allowances[msg.sender][spender];
+        require(currentAllowance >= subtractedValue, "decrease below zero");
+
+        _approve(
+            msg.sender,
+            spender,
+            currentAllowance - subtractedValue
+        );
+        return true;
+    }
+
     function _approve(address _owner, address _spender, uint256 _amount) internal {
-        require(_owner != address(0), "undefined ownder aborting");
-        require(_spender != address(0), "undefined spender aborting");
+        require(_owner != address(0), "approve from zero");
+        require(_spender != address(0), "approve to zero");
+
         allowances[_owner][_spender] = _amount;
+        emit Approval(_owner, _spender, _amount);
     }
-    function transferFrom(address _from, address _to, uint256 _amount) public returns(bool){
-        address _spender = msg.sender;
-        require(allowances[_from][_spender] >= _amount, "insufficient allowance aborting");
-        allowances[_from][_spender] = allowances[_from][_spender] - _amount;
-        _transfer(_from, _to, _amount);
+
+    function transfer(address to, uint256 amount) public returns (bool) {
+        _transfer(msg.sender, to, amount);
         return true;
     }
-    function transfer(address _to, uint256 _amount) public returns(bool) {
-        address _owner = msg.sender;
-        _transfer(_owner, _to, _amount);
+
+    function transferFrom(address from, address to, uint256 amount) public returns (bool) {
+        uint256 currentAllowance = allowances[from][msg.sender];
+        require(currentAllowance >= amount, "insufficient allowance");
+
+        allowances[from][msg.sender] = currentAllowance - amount;
+        _transfer(from, to, amount);
         return true;
     }
-    function _transfer(address _from, address _to, uint256 _amount) internal {
-        require(_to != address(0), "undefined to aborting");
-        require(_amount > 0, "invalid amount aborting");
-        require(_amount <= balances[_from], "insufficient balance aborting");
-        balances[_from] = balances[_from] - _amount;
-        balances[_to] = balances[_to] + _amount;
-        emit Transfer(_from, _to, _amount);
+
+    function _transfer(address from, address to, uint256 amount) internal {
+        require(from != address(0), "transfer from zero");
+        require(to != address(0), "transfer to zero");
+        require(amount > 0, "invalid amount");
+        require(balances[from] >= amount, "insufficient balance");
+
+        balances[from] -= amount;
+        balances[to] += amount;
+
+        emit Transfer(from, to, amount);
     }
-    function _burn(uint256 _amount) internal{
-        address _owner = msg.sender;
-        require(_amount > 0, "invalid amount aborting");
-        require(balances[_owner]>=_amount, "insufficient balance aborting");
-        balances[_owner] = balances[_owner] - _amount;
-        totalSupply = totalSupply-_amount;
-        emit Transfer(_owner, address(0), _amount);
+    function mint(address to, uint256 amount) public onlyOwner {
+        _mint(to, amount);
+    }
+
+    function _mint(address to, uint256 amount) internal {
+        require(to != address(0), "mint to zero");
+
+        totalSupply += amount;
+        balances[to] += amount;
+
+        emit Transfer(address(0), to, amount);
+    }
+
+    function burn(uint256 amount) public {
+        require(amount > 0, "invalid amount");
+        require(balances[msg.sender] >= amount, "insufficient balance");
+
+        balances[msg.sender] -= amount;
+        totalSupply -= amount;
+
+        emit Transfer(msg.sender, address(0), amount);
     }
 }
