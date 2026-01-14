@@ -101,7 +101,7 @@ contract MyERC20 is Ownable {
         emit Transfer(from, to, amount);
     }
     function mint(address to, uint256 amount) public onlyOwner {
-        _mint(to, amount);
+        _mint(to, amount*10**decimals);
     }
 
     function _mint(address to, uint256 amount) internal {
