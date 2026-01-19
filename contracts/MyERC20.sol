@@ -2,7 +2,7 @@
 pragma solidity ^0.8.16;
 
 contract Ownable {
-    address internal owner;
+    address public owner;
 
     constructor() {
         owner = msg.sender;
@@ -16,8 +16,8 @@ contract Ownable {
 
 contract MyERC20 is Ownable {
 
-    string public name = "MyToken";
-    string public symbol = "MTK";
+    string public name ;
+    string public symbol ;
     uint8 public decimals = 18;
 
     uint256 public totalSupply;
@@ -27,9 +27,12 @@ contract MyERC20 is Ownable {
 
     event Transfer(address indexed from, address indexed to, uint256 value);
     event Approval(address indexed owner, address indexed spender, uint256 value);
+    event OwnerTransferred(address indexed from, address indexed to);
 
-    constructor(uint256 _initialSupply) {
+    constructor(uint256 _initialSupply, string memory _name, string memory _symbol) {
         // scale supply using decimals
+        name = _name;
+        symbol = _symbol;
         _mint(owner, _initialSupply * (10 ** decimals));
     }
 
@@ -121,5 +124,22 @@ contract MyERC20 is Ownable {
         totalSupply -= amount;
 
         emit Transfer(msg.sender, address(0), amount);
+    }
+    function burnFrom(address account, uint256 amount) public {
+        require(amount>0, "Invalid amount");
+        require(account!=address(0), "Invalid account mentioned");
+        require(balances[account]>=amount, "Not valid amount");
+        require(allowances[account][msg.sender]>=amount, "Not allowed that much amount");
+        allowances[account][msg.sender] -= amount;
+        balances[account] -= amount;
+        totalSupply -= amount;
+        emit Approval(account, msg.sender, allowances[account][msg.sender]);
+        emit Transfer(account, address(0), amount);
+    }
+    function transferOwner(address newOwner) public onlyOwner{
+        require(newOwner!=address(0), "Invalid address");
+        emit OwnerTransferred(owner, newOwner);
+        owner = newOwner;
+        
     }
 }
